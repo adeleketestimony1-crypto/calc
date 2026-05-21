@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ScientificCalc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c14;
+  --surface:#0e1520;
+  --card:#121b2a;
+  --border:#1e2d42;
+  --border2:#243550;
+  --text:#e2eaf5;
+  --text-dim:#4a6080;
+  --text-mid:#7a9abc;
+  --accent:#00d4ff;
+  --accent-dim:#004d5e;
+  --accent2:#ff6b35;
+  --accent3:#7c3aed;
+  --green:#00e5a0;
+  --yellow:#ffd60a;
+  --red:#ff4757;
+  --btn:#131f30;
+  --btn-h:#1a2a40;
+  --btn-p:#0d1825;
+  --mono:'Space Mono',monospace;
+  --sans:'Outfit',sans-serif;
+  --r:12px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+
+/* Background grid */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:40px 40px;opacity:.3;pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(0,212,255,.06) 0%,transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 16px 40px}
+
+/* Header */
+.header{width:100%;max-width:900px;display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.logo{font-family:var(--sans);font-weight:900;font-size:22px;letter-spacing:-.02em;color:var(--text)}
+.logo span{color:var(--accent)}
+.header-tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px}
+.tab-btn{background:none;border:none;color:var(--text-dim);font-family:var(--sans);font-size:13px;font-weight:600;padding:6px 14px;border-radius:7px;cursor:pointer;transition:.2s}
+.tab-btn.active{background:var(--accent);color:#000}
+.tab-btn:hover:not(.active){color:var(--text);background:var(--btn-h)}
+
+/* Main layout */
+.main{width:100%;max-width:900px;display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+@media(max-width:720px){.main{grid-template-columns:1fr}.side-panel{display:none}}
+
+/* Calculator card */
+.calc-card{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(0,212,255,.04) inset}
+
+/* Display */
+.display{background:linear-gradient(160deg,#0a1220 0%,#08101c 100%);padding:20px 24px 16px;border-bottom:1px solid var(--border);min-height:140px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden}
+.display::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.4}
+.display-mode{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;font-family:var(--mono)}
+.display-history{font-family:var(--mono);font-size:12px;color:var(--text-dim);min-height:18px;text-align:right;word-break:break-all;margin-bottom:4px;transition:.2s}
+.display-expr{font-family:var(--mono);font-size:14px;color:var(--text-mid);min-height:20px;text-align:right;word-break:break-all;margin-bottom:6px}
+.display-output{font-family:var(--mono);font-size:48px;font-weight:700;text-align:right;word-break:break-all;color:var(--text);line-height:1;transition:color .15s;letter-spacing:-.02em}
+.display-output.error{color:var(--red);font-size:22px}
+.display-output.result-flash{color:var(--accent)}
+.deg-toggle{position:absolute;top:16px;right:16px;background:var(--btn);border:1px solid var(--border2);border-radius:6px;color:var(--text-mid);font-family:var(--mono);font-size:10px;padding:4px 10px;cursor:pointer;transition:.2s;letter-spacing:.1em}
+.deg-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.deg-toggle.rad{border-color:var(--accent2);color:var(--accent2)}
+
+/* Button grid */
+.btn-area{padding:12px}
+.btn-grid{display:grid;gap:6px}
+.btn-grid.sci{grid-template-columns:repeat(5,1fr)}
+.btn-grid.std{grid-template-columns:repeat(4,1fr);margin-top:6px}
+
+.btn{
+  position:relative;height:52px;border:1px solid var(--border);border-radius:var(--r);
+  background:var(--btn);color:var(--text);font-family:var(--mono);font-size:14px;font-weight:400;
+  cursor:pointer;transition:background .12s,border-color .12s,transform .08s,color .12s;
+  display:flex;align-items:center;justify-content:center;outline:none;
+  -webkit-tap-highlight-color:transparent;user-select:none;
+}
+.btn:hover{background:var(--btn-h);border-color:var(--border2)}
+.btn:active{background:var(--btn-p);transform:scale(.97)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.btn.sci-fn{font-size:12px;color:var(--text-mid);border-color:transparent;background:#0d1825}
+.btn.sci-fn:hover{color:var(--accent);border-color:var(--accent-dim);background:#0a1520}
+.btn.op{color:var(--accent2);font-size:20px;border-color:transparent}
+.btn.op:hover{border-color:var(--accent2);background:#1a1208}
+.btn.eq{background:var(--accent);color:#000;border-color:var(--accent);font-size:22px;font-weight:700}
+.btn.eq:hover{background:#00eeff;border-color:#00eeff}
+.btn.clr{color:var(--red)}
+.btn.clr:hover{border-color:var(--red);background:#1a0808}
+.btn.fn{color:var(--text-dim);font-size:13px}
+.btn.fn:hover{color:var(--text)}
+.btn.const{color:var(--green);font-size:13px}
+.btn.const:hover{border-color:var(--green)}
+.btn.paren{color:var(--yellow)}
+.btn.paren:hover{border-color:var(--yellow)}
+.btn.zero{grid-column:span 2;justify-content:flex-start;padding-left:22px}
+
+/* Side panel */
+.side-panel{display:flex;flex-direction:column;gap:12px}
+.panel-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.panel-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)}
+.panel-clear{background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--sans);transition:.2s}
+.panel-clear:hover{color:var(--red)}
+
+/* History */
+.history-list{max-height:320px;overflow-y:auto;padding:8px}
+.history-list::-webkit-scrollbar{width:3px}
+.history-list::-webkit-scrollbar-track{background:transparent}
+.history-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.history-item{padding:10px 10px;border-radius:8px;cursor:pointer;transition:.15s;border:1px solid transparent}
+.history-item:hover{background:var(--btn-h);border-color:var(--border2)}
+.history-item .h-expr{font-family:var(--mono);font-size:11px;color:var(--text-dim);word-break:break-all}
+.history-item .h-result{font-family:var(--mono);font-size:15px;color:var(--accent);font-weight:700;text-align:right}
+.history-empty{padding:24px;text-align:center;color:var(--text-dim);font-size:13px}
+
+/* Currency converter */
+.converter{padding:14px}
+.conv-note{font-size:11px;color:var(--text-dim);margin-bottom:12px;line-height:1.5}
+.conv-note span{color:var(--accent2)}
+.conv-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:10px}
+.conv-input{background:var(--btn);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:var(--mono);font-size:14px;width:100%;outline:none;transition:.2s}
+.conv-input:focus{border-color:var(--accent)}
+.conv-arrow{color:var(--text-dim);font-size:18px}
+.conv-select{background:var(--btn);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-family:var(--sans);font-size:12px;width:100%;outline:none;cursor:pointer}
+.conv-result{background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:16px;color:var(--accent);text-align:center;font-weight:700;min-height:42px;display:flex;align-items:center;justify-content:center}
+.conv-rate{font-size:10px;color:var(--text-dim);text-align:center;margin-top:6px;font-family:var(--mono)}
+.conv-updated{font-size:10px;color:var(--text-dim);text-align:center;margin-top:4px}
+
+/* Mobile bottom panel */
+.mobile-panels{display:none}
+@media(max-width:720px){
+  .mobile-panels{display:block;width:100%;margin-top:16px}
+  .main{gap:12px}
+  .btn{height:58px}
+  .btn-grid.sci{grid-template-columns:repeat(5,1fr)}
+  .display-output{font-size:38px}
+}
+
+/* Animations */
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.calc-card{animation:slideIn .4s cubic-bezier(.16,1,.3,1) both}
+.side-panel{animation:slideIn .4s cubic-bezier(.16,1,.3,1) .1s both}
+
+/* Mode views */
+.view{display:none}
+.view.active{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo">Sci<span>Calc</span></div>
+    <div class="header-tabs">
+      <button class="tab-btn active" onclick="switchTab('calc')">Calculator</button>
+      <button class="tab-btn" onclick="switchTab('converter')">Converter</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- LEFT: Calculator -->
+    <div class="calc-card">
+      <div class="display">
+        <button class="deg-toggle" id="degToggle" onclick="toggleAngle()">DEG</button>
+        <div class="display-mode" id="displayMode">standard</div>
+        <div class="display-history" id="displayHistory">&nbsp;</div>
+        <div class="display-expr" id="displayExpr">&nbsp;</div>
+        <div class="display-output" id="displayOutput">0</div>
+      </div>
+
+      <div class="btn-area">
+        <!-- Scientific row 1 -->
+        <div class="btn-grid sci">
+          <button class="btn sci-fn" onclick="inputFn('sin(')">sin</button>
+          <button class="btn sci-fn" onclick="inputFn('cos(')">cos</button>
+          <button class="btn sci-fn" onclick="inputFn('tan(')">tan</button>
+          <button class="btn sci-fn" onclick="inputFn('log(')">log</button>
+          <button class="btn sci-fn" onclick="inputFn('ln(')">ln</button>
+        </div>
+        <!-- Scientific row 2 -->
+        <div class="btn-grid sci" style="margin-top:6px">
+          <button class="btn sci-fn" onclick="inputFn('asin(')">sin⁻¹</button>
+          <button class="btn sci-fn" onclick="inputFn('acos(')">cos⁻¹</button>
+          <button class="btn sci-fn" onclick="inputFn('atan(')">tan⁻¹</button>
+          <button class="btn sci-fn" onclick="inputFn('sqrt(')">√</button>
+          <button class="btn sci-fn" onclick="inputFn('^')">xʸ</button>
+        </div>
+        <!-- Scientific row 3 -->
+        <div class="btn-grid sci" style="margin-top:6px">
+          <button class="btn const" onclick="inputToken('π')">π</button>
+          <button class="btn const" onclick="inputToken('e')">e</button>
+          <button class="btn sci-fn" onclick="inputFn('fact(')">n!</button>
+          <button class="btn paren" onclick="inputToken('(')"> ( </button>
+          <button class="btn paren" onclick="inputToken(')')"> ) </button>
+        </div>
+
+        <!-- Standard grid -->
+        <div class="btn-grid std" style="margin-top:8px">
+          <!-- Row 1 -->
+          <button class="btn clr" onclick="doClear()">AC</button>
+          <button class="btn fn" onclick="doSign()">+/−</button>
+          <button class="btn fn" onclick="inputToken('%')">%</button>
+          <button class="btn op" onclick="inputToken('÷')">÷</button>
+          <!-- Row 2 -->
+          <button class="btn" onclick="inputDigit('7')">7</button>
+          <button class="btn" onclick="inputDigit('8')">8</button>
+          <button class="btn" onclick="inputDigit('9')">9</button>
+          <button class="btn op" onclick="inputToken('×')">×</button>
+          <!-- Row 3 -->
+          <button class="btn" onclick="inputDigit('4')">4</button>
+          <button class="btn" onclick="inputDigit('5')">5</button>
+          <button class="btn" onclick="inputDigit('6')">6</button>
+          <button class="btn op" onclick="inputToken('−')">−</button>
+          <!-- Row 4 -->
+          <button class="btn" onclick="inputDigit('1')">1</button>
+          <button class="btn" onclick="inputDigit('2')">2</button>
+          <button class="btn" onclick="inputDigit('3')">3</button>
+          <button class="btn op" onclick="inputToken('+')">+</button>
+          <!-- Row 5 -->
+          <button class="btn zero" onclick="inputDigit('0')">0</button>
+          <button class="btn" onclick="inputDot()">.</button>
+          <button class="btn eq" onclick="doEquals()">=</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Side panel (desktop) -->
+    <div class="side-panel">
+      <!-- History -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title">History</span>
+          <button class="panel-clear" onclick="clearHistory()">Clear</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">No calculations yet</div>
+        </div>
+      </div>
+
+      <!-- Currency Converter -->
+      <div class="panel-card" id="converterCard">
+        <div class="panel-header">
+          <span class="panel-title">Currency Converter</span>
+          <span style="font-size:10px;color:var(--accent2)">Offline</span>
+        </div>
+        <div class="converter">
+          <div class="conv-note">Uses <span>approximate offline rates</span> — not live. For reference only.</div>
+          <div class="conv-row">
+            <input class="conv-input" id="convFrom" type="number" value="1" oninput="doConvert()"/>
+            <span class="conv-arrow">→</span>
+            <div class="conv-result" id="convResult">—</div>
+          </div>
+          <div class="conv-row">
+            <select class="conv-select" id="fromCurr" onchange="doConvert()"></select>
+            <span></span>
+            <select class="conv-select" id="toCurr" onchange="doConvert()"></select>
+          </div>
+          <div class="conv-rate" id="convRate"></div>
+          <div class="conv-updated">Rates: approximate 2024 reference values</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile: history + converter below calc -->
+  <div class="mobile-panels" style="max-width:900px;width:100%">
+    <div class="panel-card" style="margin-bottom:12px">
+      <div class="panel-header">
+        <span class="panel-title">History</span>
+        <button class="panel-clear" onclick="clearHistory()">Clear</button>
+      </div>
+      <div class="history-list" id="historyListMobile">
+        <div class="history-empty">No calculations yet</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+const PI = Math.PI;
+const E  = Math.E;
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let expr      = '';       // current expression string
+let lastResult = null;    // last computed result
+let justEvaled = false;   // did we just press =?
+let angleMode  = 'deg';   // 'deg' | 'rad'
+let history    = JSON.parse(localStorage.getItem('scicalc_history') || '[]');
+
+// ── DOM refs ───────────────────────────────────────────────────────────────────
+const $out    = document.getElementById('displayOutput');
+const $expr   = document.getElementById('displayExpr');
+const $hist   = document.getElementById('displayHistory');
+const $mode   = document.getElementById('displayMode');
+
+// ── Angle toggle ───────────────────────────────────────────────────────────────
+function toggleAngle() {
+  angleMode = angleMode === 'deg' ? 'rad' : 'deg';
+  const btn = document.getElementById('degToggle');
+  btn.textContent = angleMode.toUpperCase();
+  btn.className = 'deg-toggle' + (angleMode === 'rad' ? ' rad' : '');
+  $mode.textContent = angleMode === 'deg' ? 'standard' : 'radians';
+}
+
+function toRad(x) { return angleMode === 'deg' ? x * PI / 180 : x; }
+function toDeg(x) { return angleMode === 'deg' ? x * 180 / PI : x; }
+
+// ── Input handlers ─────────────────────────────────────────────────────────────
+function inputDigit(d) {
+  if (justEvaled) { expr = ''; justEvaled = false; }
+  // Prevent leading zeros
+  if (expr === '0' && d !== '.') expr = '';
+  expr += d;
+  render();
+}
+
+function inputDot() {
+  if (justEvaled) { expr = '0'; justEvaled = false; }
+  // Find last number in expression and check if it has a dot
+  const parts = expr.split(/[\+\-\×\÷\(\)]/);
+  const last  = parts[parts.length - 1];
+  if (last.includes('.')) return;
+  if (last === '') expr += '0';
+  expr += '.';
+  render();
+}
+
+function inputToken(t) {
+  if (justEvaled) {
+    // After result, operators continue; other tokens reset
+    if (['+','−','×','÷','^','%'].includes(t)) {
+      expr = formatResult(lastResult);
+      justEvaled = false;
+    } else {
+      expr = '';
+      justEvaled = false;
+    }
+  }
+  expr += t;
+  render();
+}
+
+function inputFn(fn) {
+  if (justEvaled) { expr = ''; justEvaled = false; }
+  expr += fn;
+  render();
+}
+
+function doSign() {
+  if (!expr || expr === '0') return;
+  // Wrap entire expression or last number
+  if (expr.startsWith('-')) {
+    expr = expr.slice(1);
+  } else {
+    expr = '-' + expr;
+  }
+  render();
+}
+
+function doClear() {
+  expr = '';
+  lastResult = null;
+  justEvaled = false;
+  $hist.textContent = '\u00A0';
+  $expr.textContent = '\u00A0';
+  $out.textContent = '0';
+  $out.className = 'display-output';
+}
+
+function doBackspace() {
+  if (justEvaled) { doClear(); return; }
+  expr = expr.slice(0, -1);
+  render();
+}
+
+// ── Evaluation ─────────────────────────────────────────────────────────────────
+function doEquals() {
+  if (!expr) return;
+  const raw = expr;
+  try {
+    const result = evaluate(expr);
+    if (!isFinite(result)) throw new Error('Math error');
+
+    const formatted = formatResult(result);
+    $hist.textContent = raw + ' =';
+    $out.textContent  = formatted;
+    $out.className    = 'display-output result-flash';
+    setTimeout(() => $out.className = 'display-output', 300);
+    $expr.textContent = '\u00A0';
+
+    // Save to history
+    addHistory(raw, formatted);
+
+    lastResult = result;
+    justEvaled = true;
+    expr       = formatted;
+  } catch(err) {
+    $out.textContent = err.message || 'Error';
+    $out.className   = 'display-output error';
+    justEvaled = true;
+  }
+}
+
+// ── Expression evaluator ────────────────────────────────────────────────────────
+function evaluate(raw) {
+  // 1. Replace display symbols with JS-safe equivalents
+  let s = raw
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/')
+    .replace(/−/g, '-')
+    .replace(/π/g, '(' + PI + ')')
+    .replace(/\be\b/g, '(' + E + ')');
+
+  // 2. Replace factorial: fact(n)
+  s = s.replace(/fact\(([^)]+)\)/g, (_, n) => {
+    const val = evaluate(n);
+    return factorial(val);
+  });
+
+  // 3. Replace trig functions (angle-aware)
+  s = s.replace(/asin\(/g, '__asin(')
+       .replace(/acos\(/g, '__acos(')
+       .replace(/atan\(/g, '__atan(')
+       .replace(/sin\(/g,  '__sin(')
+       .replace(/cos\(/g,  '__cos(')
+       .replace(/tan\(/g,  '__tan(');
+
+  // 4. Replace log/ln
+  s = s.replace(/ln\(/g,   '__ln(')
+       .replace(/log\(/g,  '__log(')
+       .replace(/sqrt\(/g, 'Math.sqrt(');
+
+  // 5. Replace power operator
+  s = s.replace(/\^/g, '**');
+
+  // 6. Replace percentage: number%  →  number/100
+  s = s.replace(/(\d+\.?\d*)%/g, '($1/100)');
+
+  // 6. Build safe function context
+  const fns = {
+    __sin:  x => Math.sin(toRad(x)),
+    __cos:  x => Math.cos(toRad(x)),
+    __tan:  x => Math.tan(toRad(x)),
+    __asin: x => toDeg(Math.asin(x)),
+    __acos: x => toDeg(Math.acos(x)),
+    __atan: x => toDeg(Math.atan(x)),
+    __ln:   x => Math.log(x),
+    __log:  x => Math.log10(x),
+    Math:   Math,
+  };
+
+  // Use Function constructor with explicit safe scope — no eval()
+  const keys   = Object.keys(fns);
+  const vals   = Object.values(fns);
+  const fn     = new Function(...keys, `"use strict"; return (${s});`);
+  return fn(...vals);
+}
+
+function factorial(n) {
+  n = Math.round(n);
+  if (n < 0) throw new Error('Domain error');
+  if (n > 170) throw new Error('Too large');
+  if (n === 0 || n === 1) return 1;
+  let r = 1;
+  for (let i = 2; i <= n; i++) r *= i;
+  return r;
+}
+
+function formatResult(n) {
+  if (!isFinite(n)) return 'Error';
+  const abs = Math.abs(n);
+  if (abs >= 1e13 || (abs > 0 && abs < 1e-9)) return n.toExponential(6);
+  const rounded = parseFloat(n.toPrecision(12));
+  let s = String(rounded);
+  return s;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function render() {
+  if (!expr) {
+    $out.textContent = '0';
+    $expr.textContent = '\u00A0';
+    return;
+  }
+  // Show formatted expression above, live partial result attempt below
+  $expr.textContent = expr;
+  try {
+    const preview = evaluate(expr);
+    if (isFinite(preview) && String(preview) !== expr) {
+      $out.textContent = formatResult(preview);
+      $out.className   = 'display-output';
+    } else {
+      $out.textContent = expr;
+    }
+  } catch {
+    $out.textContent = expr;
+  }
+  $out.className = 'display-output';
+}
+
+// ── History ────────────────────────────────────────────────────────────────────
+function addHistory(expression, result) {
+  history.unshift({ expression, result, time: Date.now() });
+  if (history.length > 50) history.pop();
+  localStorage.setItem('scicalc_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function clearHistory() {
+  history = [];
+  localStorage.removeItem('scicalc_history');
+  renderHistory();
+}
+
+function renderHistory() {
+  const lists = ['historyList', 'historyListMobile'];
+  lists.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (history.length === 0) {
+      el.innerHTML = '<div class="history-empty">No calculations yet</div>';
+      return;
+    }
+    el.innerHTML = history.map((h, i) => `
+      <div class="history-item" onclick="recallHistory(${i})">
+        <div class="h-expr">${h.expression}</div>
+        <div class="h-result">${h.result}</div>
+      </div>
+    `).join('');
+  });
+}
+
+function recallHistory(i) {
+  const h = history[i];
+  expr = h.result;
+  justEvaled = false;
+  $hist.textContent = h.expression + ' =';
+  render();
+}
+
+// ── Keyboard support ───────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey) return;
+  const k = e.key;
+
+  if (k >= '0' && k <= '9') { e.preventDefault(); inputDigit(k); }
+  else if (k === '.') { e.preventDefault(); inputDot(); }
+  else if (k === '+') { e.preventDefault(); inputToken('+'); }
+  else if (k === '-') { e.preventDefault(); inputToken('−'); }
+  else if (k === '*') { e.preventDefault(); inputToken('×'); }
+  else if (k === '/') { e.preventDefault(); inputToken('÷'); }
+  else if (k === '^') { e.preventDefault(); inputToken('^'); }
+  else if (k === '%') { e.preventDefault(); inputToken('%'); }
+  else if (k === '(') { e.preventDefault(); inputToken('('); }
+  else if (k === ')') { e.preventDefault(); inputToken(')'); }
+  else if (k === 'Enter' || k === '=') { e.preventDefault(); doEquals(); }
+  else if (k === 'Escape' || k === 'Delete') { e.preventDefault(); doClear(); }
+  else if (k === 'Backspace') { e.preventDefault(); doBackspace(); }
+  else if (k === 'p' || k === 'P') { e.preventDefault(); inputToken('π'); }
+});
+
+// ── Tab switch ─────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  // On mobile, scroll to converter
+  if (tab === 'converter') {
+    document.getElementById('converterCard')?.scrollIntoView({behavior:'smooth'});
+  }
+}
+
+// ── Currency Converter ────────────────────────────────────────────────────────
+// Approximate USD-based rates (reference values, not live)
+const RATES = {
+  USD:1, EUR:0.92, GBP:0.79, JPY:149.5, CAD:1.36, AUD:1.53,
+  CHF:0.89, CNY:7.24, INR:83.1, MXN:17.2, BRL:4.97, KRW:1325,
+  SGD:1.34, HKD:7.82, NOK:10.6, SEK:10.4, DKK:6.89, NZD:1.63,
+  ZAR:18.6, TRY:30.5, NGN:1560, EGP:30.9, KES:158, GHS:12.3,
+  AED:3.67, SAR:3.75, QAR:3.64, KWD:0.308, BHD:0.377,
+  THB:35.1, MYR:4.72, IDR:15700, PHP:56.4, VND:24500,
+  PKR:280, BDT:110, LKR:320, NPR:133, MMK:2100,
+  PLN:4.02, HUF:353, CZK:22.8, RON:4.57, BGN:1.80,
+  UAH:37.8, RUB:91, ILS:3.68, MAD:10.1, TND:3.13,
+  BTC:0.0000234, ETH:0.000523,
+};
+
+function buildCurrencySelects() {
+  const currencies = Object.keys(RATES).sort();
+  const defaults   = { from: 'USD', to: 'GBP' };
+  ['fromCurr','toCurr'].forEach((id, i) => {
+    const sel = document.getElementById(id);
+    currencies.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      if (c === (i === 0 ? defaults.from : defaults.to)) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  });
+  doConvert();
+}
+
+function doConvert() {
+  const amount = parseFloat(document.getElementById('convFrom').value);
+  const from   = document.getElementById('fromCurr').value;
+  const to     = document.getElementById('toCurr').value;
+  if (isNaN(amount)) { document.getElementById('convResult').textContent = '—'; return; }
+
+  const inUSD  = amount / RATES[from];
+  const result = inUSD * RATES[to];
+  const rate   = RATES[to] / RATES[from];
+
+  document.getElementById('convResult').textContent =
+    result >= 0.01 ? result.toFixed(4) : result.toExponential(4);
+  document.getElementById('convRate').textContent =
+    `1 ${from} ≈ ${rate >= 0.01 ? rate.toFixed(6) : rate.toExponential(4)} ${to}`;
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+buildCurrencySelects();
+renderHistory();
+</script>
+</body>
+</html>
